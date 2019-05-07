@@ -2,10 +2,10 @@
 Django Redis Admin
 ==============================================================================
 
-Travis status:
-
-.. image:: https://travis-ci.org/WoLpH/django-redis-admin.svg?branch=master
-  :target: https://travis-ci.org/WoLpH/django-redis-admin
+.. Travis status:
+   
+   .. image:: https://travis-ci.org/WoLpH/django-redis-admin.svg?branch=master
+     :target: https://travis-ci.org/WoLpH/django-redis-admin
 
 Introduction
 ==============================================================================
@@ -15,6 +15,13 @@ databases. It supports simple servers, master slave setups and sentinel setups.
 
 The admin works by creating a `RedisQueryset` which fakes Django models and 
 querysets so the `ModelAdmin` thinks it's using a regular database backed model.
+
+Since Redis only supports basic types the library allows for optional `base64`
+encoding/decoding and `json` encoding/decoding.
+
+While I would not recommend using it as a regular queryset to access Redis. In
+addition to querying data it does some extra queries which you usually don't
+need (such as fetching idle data) and it does some automatic conversion steps.
 
 Requirements
 ==============================================================================
