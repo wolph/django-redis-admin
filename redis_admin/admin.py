@@ -71,7 +71,8 @@ class Queryset:
                      'https://github.com/WoLpH/redis_admin/issues/') % filter
 
             # Not sure when args are ever a thing so we don't support it yet
-            assert not args, error
+            # commenting the following line as it causes an issue on Django 3.2.12
+            # assert not args, error
 
             for key, value in kwargs.items():
                 # Can't have multiple filters with redis
