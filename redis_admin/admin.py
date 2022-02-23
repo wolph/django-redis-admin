@@ -74,7 +74,7 @@ class Queryset:
             # commenting the following line as it causes an issue on Django 3.2.12
             # assert not args, error
 
-            for key, value in kwargs.items():
+            for key, value in args:
                 # Can't have multiple filters with redis
                 assert not query, error
 
