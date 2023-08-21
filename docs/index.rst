@@ -1,6 +1,8 @@
 Welcome to the Django Redis Admin documentation!
 ==============================================================================
 
+Source: https://github.com/WoLpH/django-redis-admin
+
 Contents:
 
 .. toctree::

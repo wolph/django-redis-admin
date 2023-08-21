@@ -61,6 +61,9 @@ if __name__ == '__main__':
             'docs': [
                 'sphinx>=1.7.4',
             ],
+            'tests': [
+                'pytest',
+            ],
         },
         classifiers=[
             'Development Status :: 5 - Production/Stable',
