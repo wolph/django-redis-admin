@@ -1,15 +1,21 @@
 from __future__ import annotations
 
+import os
 import socket
 import subprocess
 import time
 import typing
 
+import django
 import pytest
 import redis
-from django.conf import settings as django_settings
 
-from redis_admin import (
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'test_redis_admin.settings')
+django.setup()
+
+from django.conf import settings as django_settings  # noqa: E402
+
+from redis_admin import (  # noqa: E402
     client,
     settings as redis_settings,
 )
@@ -89,3 +95,26 @@ def redis_client(
     r.flushdb()
     client.masters.clear()
     client.slaves.clear()
+
+
+class MockSentinel:
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        self.args: tuple[typing.Any, ...] = args
+        self.kwargs: dict[str, typing.Any] = kwargs
+        self.master_dict: dict[str, typing.Any] = {}
+        self.slave_dict: dict[str, typing.Any] = {}
+
+    def master_for(
+        self, service_name: str, **kwargs: typing.Any
+    ) -> typing.Any:
+        return self.master_dict.get(service_name, f'master_{service_name}')
+
+    def slave_for(self, service_name: str, **kwargs: typing.Any) -> typing.Any:
+        return self.slave_dict.get(service_name, f'slave_{service_name}')
+
+
+@pytest.fixture
+def mock_sentinel(monkeypatch: pytest.MonkeyPatch) -> MockSentinel:
+    sentinel_instance: MockSentinel = MockSentinel()
+    monkeypatch.setattr(client, '_sentinel', sentinel_instance)
+    return sentinel_instance

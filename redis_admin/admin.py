@@ -29,6 +29,20 @@ def grouper(
     return itertools.zip_longest(*args, fillvalue=fillvalue)
 
 
+def _extract_q_pairs(
+    items: typing.Iterable[typing.Any],
+) -> list[tuple[str, typing.Any]]:
+    pairs: list[tuple[str, typing.Any]] = []
+    for item in items:
+        if isinstance(item, Q):
+            pairs.extend(_extract_q_pairs(item.children))
+        elif isinstance(item, (tuple, list)):
+            item_any: typing.Any = item  # pyright: ignore[reportUnknownVariableType]
+            if len(item_any) == 2 and isinstance(item_any[0], str):  # pyright: ignore[reportUnknownArgumentType]
+                pairs.append((str(item_any[0]), item_any[1]))  # pyright: ignore[reportUnknownArgumentType]
+    return pairs
+
+
 class Query:
     order_by: typing.ClassVar[tuple[typing.Any, ...]] = ()
 
@@ -36,7 +50,8 @@ class Query:
         self.queryset: Queryset = queryset
 
     def select_related(self, *args: typing.Any, **kwargs: typing.Any) -> Query:
-        assert not args and not kwargs
+        assert not args
+        assert not kwargs
         return self
 
 
@@ -103,6 +118,7 @@ class Queryset:
         )
 
         self.ordered: bool = True
+        self.totally_ordered: bool = True
         self.query: Query = Query(self)
 
     def is_excluded(self, key: str) -> bool:
@@ -140,11 +156,9 @@ class Queryset:
                 'report on https://github.com/WoLpH/redis_admin/issues/'
             )
 
-            # Not sure when args are ever a thing so we don't support it yet
-            # Commenting out as it causes an issue on Django 3.2.12
-            # assert not args, error
+            filter_pairs: list[tuple[str, typing.Any]] = _extract_q_pairs(args)
 
-            for key, value in args:
+            for key, value in filter_pairs:
                 # Can't have multiple filters with redis
                 assert not query, error
 
@@ -184,7 +198,7 @@ class Queryset:
         if self.filters:
             # Arbitrary number, we don't want to search if not needed
             if not self._cache:
-                self[: self.slice_limit]
+                list(iter(self[: self.slice_limit]))
 
             return len(self._cache) if self._cache is not None else 0
 
@@ -261,6 +275,8 @@ class Queryset:
             ):
                 type_, ttl, idle = result
                 decoded_type: str = str(models.decode_bytes(type_))
+                if decoded_type == 'none':
+                    continue
 
                 expires_at: datetime | None = (
                     now + timedelta(seconds=ttl / 1000)
@@ -288,20 +304,22 @@ class Queryset:
         keys: list[str],
         values: collections.OrderedDict[str, models.RedisValue],
     ) -> None:
+        fetch_keys: list[str] = [k for k in keys if k in values]
         with self.slave.pipeline() as pipe:
-            for key in keys:
+            for key in fetch_keys:
                 model_value: models.RedisValue = values[key]
                 model_value.fetch_value(pipe)
 
             try:
-                for key, raw_val in zip(keys, pipe.execute(), strict=True):
+                results: list[typing.Any] = pipe.execute()
+                for key, raw_val in zip(fetch_keys, results, strict=True):
                     values[key].raw_value = raw_val
                     try:
                         _ = values[key].value
                     except Exception:
                         logger.exception('Unable to decode: %r', raw_val)
             except redis.ResponseError:
-                for key in keys:
+                for key in fetch_keys:
                     model_value = values[key]
                     model_value.raw_value = model_value.fetch_value(self.slave)
 
@@ -319,7 +337,7 @@ class Queryset:
         values: collections.OrderedDict[str, models.RedisValue] = (
             self._fetch_metadata(keys)
         )
-        self._fetch_values(keys, values)
+        self._fetch_values(list(values.keys()), values)
 
         self._cache = values
         for value in values.values():

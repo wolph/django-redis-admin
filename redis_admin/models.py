@@ -20,6 +20,22 @@ from . import settings
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+T = typing.TypeVar('T')
+R = typing.TypeVar('R', bound='RedisValue')
+
+
+@typing.overload
+def decode_bytes(
+    value: bytes, encoding: str = 'utf-8', method: str = 'replace'
+) -> str: ...
+
+
+@typing.overload
+def decode_bytes(
+    value: T, encoding: str = 'utf-8', method: str = 'replace'
+) -> T: ...
+
+
 def decode_bytes(
     value: typing.Any, encoding: str = 'utf-8', method: str = 'replace'
 ) -> typing.Any:
@@ -55,7 +71,7 @@ class RedisValue(models.Model):
     key: models.CharField[str, str] = models.CharField(
         max_length=256, primary_key=True
     )
-    raw_value: models.TextField[str, str] = models.TextField()
+    raw_value: models.TextField[typing.Any, typing.Any] = models.TextField()
     type: models.CharField[str, str] = models.CharField(max_length=8)
     expires_at: models.DateTimeField[datetime | None, datetime | None] = (
         models.DateTimeField(null=True, blank=True)
@@ -69,12 +85,8 @@ class RedisValue(models.Model):
     @classmethod
     def register_type(
         cls, type: str
-    ) -> typing.Callable[
-        [builtins.type[typing.Any]], builtins.type[typing.Any]
-    ]:
-        def _register_type(
-            class_: builtins.type[typing.Any],
-        ) -> builtins.type[typing.Any]:
+    ) -> typing.Callable[[builtins.type[R]], builtins.type[R]]:
+        def _register_type(class_: builtins.type[R]) -> builtins.type[R]:
             cls.TYPES[type] = class_
             return class_
 
@@ -236,14 +248,6 @@ for name, server in settings.SERVERS.items():
     if 'meta' in server:
         for key, value in server['meta'].items():
             setattr(Meta, key, value)
-
-    for exclude_attr in (
-        'exclude_key_prefixes',
-        'exclude_key_re',
-        'exclude_keys',
-    ):
-        if exclude_attr in server:
-            setattr(Meta, exclude_attr, server[exclude_attr])
 
     model_class: type[RedisValue] = type(
         name.capitalize(),
