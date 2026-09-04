@@ -2,15 +2,11 @@
 # pre-commit: instant, staged files only. pre-push: a few seconds, runs less often.
 
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
-    ruff-check:
+    ruff:
       glob: '*.py'
-      run: uv run ruff check --fix {staged_files}
-      stage_fixed: true
-    ruff-format:
-      glob: '*.py'
-      run: uv run ruff format {staged_files}
+      run: uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
       stage_fixed: true
     codespell:
       run: uv run codespell {staged_files}

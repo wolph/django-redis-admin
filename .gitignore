@@ -5,6 +5,7 @@ cover
 *.egg-info
 .cache
 .coverage
+.coverage.*
 **/htmlcov
 **/*.pyc
 **/*.pyo
