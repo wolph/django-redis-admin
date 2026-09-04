@@ -1,0 +1,83 @@
+[build-system]
+requires = ['uv_build>=0.11,<0.13']
+build-backend = 'uv_build'
+
+[tool.uv.build-backend]
+module-root = ''
+module-name = 'redis_admin'
+source-include = ['tests/**/*.py', 'tox.ini']
+
+[project]
+name = 'django-redis-admin'
+version = "0.3.0"
+description = 'A Django Admin interface for Redis servers with optional Redis Sentinel support'
+readme = 'README.md'
+requires-python = '>=3.10'
+license = 'BSD-3-Clause'
+license-files = ['LICENSE']
+authors = [{ name = 'Rick van Hattem', email = 'wolph@wol.ph' }]
+keywords = ['redis', 'django', 'admin', 'sentinel']
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Environment :: Web Environment',
+    'Framework :: Django',
+    'Framework :: Django :: 4.2',
+    'Framework :: Django :: 5.0',
+    'Framework :: Django :: 5.1',
+    'Framework :: Django :: 5.2',
+    'Intended Audience :: Developers',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+    'Programming Language :: Python :: Implementation :: CPython',
+    'Programming Language :: Python :: Implementation :: PyPy',
+    'Typing :: Typed',
+]
+dependencies = [
+    'redis>=4.0.0',
+    'django>=4.2',
+]
+
+[project.urls]
+Homepage = 'https://github.com/WoLpH/django-redis-admin'
+Documentation = 'https://django-redis-admin.readthedocs.io/'
+Repository = 'https://github.com/WoLpH/django-redis-admin'
+Changelog = 'https://github.com/WoLpH/django-redis-admin/releases'
+
+[project.optional-dependencies]
+docs = ['sphinx', 'furo', 'myst-parser']
+tests = [
+    'pytest',
+    'pytest-cov',
+    'pytest-django',
+    'fakeredis',
+]
+
+[dependency-groups]
+docs = ['sphinx', 'furo', 'myst-parser']
+test = [
+    'pytest',
+    'pytest-cov',
+    'pytest-django',
+    'fakeredis',
+]
+dev = [
+    'ruff',
+    'mypy',
+    'basedpyright',
+    'pyrefly',
+    'codespell',
+    'django-stubs',
+    'types-redis',
+    'lefthook',
+    { include-group = 'test' },
+    { include-group = 'docs' },
+]
+tox = ['tox>=4', 'tox-uv>=1', 'tox-gh-actions']
+
+[tool.uv]
+exclude-newer = "14 days"
