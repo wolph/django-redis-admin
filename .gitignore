@@ -15,3 +15,4 @@ cover
 *.log
 *.rdb
 .pytest_cache/
+!docs/superpowers/
