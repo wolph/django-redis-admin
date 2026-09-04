@@ -34,10 +34,10 @@ You can run the demo project using the following commands:
 
 ```bash
 cd test_redis_admin
-python manage.py runserver
+python manage.py runserver 8080
 ```
 
-The default username and password is `admin`/`admin`: http://localhost:8080/admin/
+The default credentials are `admin`/`admin`: http://localhost:8080/admin/
 
 ### Basic Configuration
 

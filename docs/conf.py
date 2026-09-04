@@ -49,8 +49,12 @@ exclude_patterns: list[str] = [
     'superpowers/**',
 ]
 
-intersphinx_mapping: dict[str, tuple[str, None]] = {
+intersphinx_mapping: dict[str, tuple[str, str | None]] = {
     'python': ('https://docs.python.org/3', None),
+    'django': (
+        'https://docs.djangoproject.com/en/stable/',
+        'https://docs.djangoproject.com/en/stable/_objects/',
+    ),
 }
 
 # -- HTML output --------------------------------------------------------------
