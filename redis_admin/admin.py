@@ -5,12 +5,14 @@ import redis
 import typing
 from datetime import timedelta
 
+from django.conf import settings as django_settings
 from django.contrib import admin
 from django.db.models import Q
 from django.utils import timezone
 
 from . import models
 from . import client
+from . import settings
 
 
 logger = logging.getLogger(__name__)
@@ -34,21 +36,75 @@ class Query:
 
 class Queryset:
 
-    def __init__(self, model: models.RedisValue, slice_limit=101):
-        self.slice_limit = slice_limit
+    def __init__(self, model: models.RedisValue, slice_limit: int = 101):
+        self.slice_limit: int = slice_limit
         self.q: str = '*'
-        self.filters: typing.List[Q] = ()
+        self.filters: typing.List[Q] = []
         self.admin = admin
-        self.model = model
+        self.model: models.RedisValue = model
         self._meta = model._meta
-        self.master = client.get_master(model._meta.model_name)
-        self.slave = client.get_slave(model._meta.model_name)
+        self.master: redis.Redis = client.get_master(model._meta.model_name)
+        self.slave: redis.Redis = client.get_slave(model._meta.model_name)
         self._cache = None
         self._get_cache = None
-        self.slice = None
+        self.slice: typing.Optional[slice] = None
 
-        self.ordered = True
-        self.query = Query(self)
+        meta_prefixes: typing.Tuple[str, ...] = settings._get_exclude_key_prefixes(
+            getattr(self._meta, 'exclude_key_prefixes', ())
+        )
+        meta_re: typing.Optional[typing.Pattern] = settings._get_exclude_key_re(
+            getattr(self._meta, 'exclude_key_re', None)
+        )
+        meta_keys: typing.Set[str] = settings._get_exclude_keys(
+            getattr(self._meta, 'exclude_keys', ())
+        )
+
+        global_prefixes: typing.Tuple[str, ...] = settings._get_exclude_key_prefixes(
+            getattr(
+                django_settings,
+                'REDIS_EXCLUDE_KEY_PREFIXES',
+                getattr(settings, 'EXCLUDE_KEY_PREFIXES', ()),
+            )
+        )
+        global_re: typing.Optional[typing.Pattern] = settings._get_exclude_key_re(
+            getattr(
+                django_settings,
+                'REDIS_EXCLUDE_KEY_RE',
+                getattr(settings, 'EXCLUDE_KEY_RE', None),
+            )
+        )
+        global_keys: typing.Set[str] = settings._get_exclude_keys(
+            getattr(
+                django_settings,
+                'REDIS_EXCLUDE_KEYS',
+                getattr(settings, 'EXCLUDE_KEYS', ()),
+            )
+        )
+
+        self.exclude_key_prefixes: typing.Tuple[str, ...] = tuple(
+            sorted(set(meta_prefixes + global_prefixes))
+        )
+        self.exclude_keys: typing.Set[str] = meta_keys | global_keys
+        self.exclude_key_res: typing.List[typing.Pattern] = [
+            pattern for pattern in (meta_re, global_re) if pattern is not None
+        ]
+        self.exclude_key_re: typing.Optional[typing.Pattern] = (
+            self.exclude_key_res[0] if self.exclude_key_res else None
+        )
+
+        self.ordered: bool = True
+        self.query: Query = Query(self)
+
+    def is_excluded(self, key: str) -> bool:
+        if self.exclude_keys and key in self.exclude_keys:
+            return True
+        if self.exclude_key_prefixes and key.startswith(self.exclude_key_prefixes):
+            return True
+        if self.exclude_key_res:
+            for pattern in self.exclude_key_res:
+                if pattern.search(key):
+                    return True
+        return False
 
     def count(self):
         return len(self)
@@ -124,8 +180,13 @@ class Queryset:
             return keyspace.get(f'db{db}', dict()).get('keys', 1000)
 
     def get(self, *args, **kwargs):
-        if not self._get_cache:
+        self._get_cache = None
+        try:
             self._get_cache = next(iter(self.filter(**kwargs)))
+        except StopIteration:
+            raise self.model.DoesNotExist(
+                f'{self.model._meta.object_name} matching query does not exist.'
+            )
         return self._get_cache
 
     def __iter__(self):
@@ -139,11 +200,11 @@ class Queryset:
             return
 
         self.slice = index = self.slice or slice(self.slice_limit)
-        slice_size = min(index.stop, self.slice_limit)
-        keys_iter = self.slave.scan_iter(self.q, count=slice_size)
-        keys = itertools.islice(keys_iter, index.start, index.stop, index.step)
-
-        keys = [key.decode() for key in keys]
+        slice_size: int = min(index.stop, self.slice_limit) if index.stop is not None else self.slice_limit
+        raw_keys_iter: typing.Iterator = self.slave.scan_iter(self.q, count=slice_size)
+        decoded_keys_iter: typing.Iterator[str] = (models.decode_bytes(k) for k in raw_keys_iter)
+        filtered_keys_iter: typing.Iterator[str] = (k for k in decoded_keys_iter if not self.is_excluded(k))
+        keys: typing.List[str] = list(itertools.islice(filtered_keys_iter, index.start, index.stop, index.step))
 
         now = timezone.now()
         with self.slave.pipeline() as pipe:
@@ -197,11 +258,11 @@ class Queryset:
             for value in values.values():
                 yield value
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: typing.Union[int, slice]):
         if isinstance(index, int):
-            self.index = slice(0, index, 1)
+            self.slice = slice(index, index + 1, 1)
         elif isinstance(index, slice):
-            self.index = index
+            self.slice = index
         else:
             raise TypeError('Unsupported index type %r: %r' % (
                 type(index), index))

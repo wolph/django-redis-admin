@@ -10,3 +10,8 @@ cover
 **/*.pyo
 **/*.so
 /.tox
+.eggs/
+.venv/
+*.log
+*.rdb
+.pytest_cache/

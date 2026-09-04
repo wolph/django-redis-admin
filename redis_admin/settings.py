@@ -38,3 +38,45 @@ BASE64_KEY_RE = re.compile(getattr(settings, 'REDIS_BASE64_KEY_RE', '^$'))
 
 #: Can be any importable module that has a `loads` and `dumps` function
 JSON_MODULE = __import__(getattr(settings, 'REDIS_JSON_MODULE', 'json'))
+
+import typing
+
+
+def _get_exclude_key_prefixes(raw: typing.Any) -> typing.Tuple[str, ...]:
+    if not raw:
+        return ()
+    if isinstance(raw, str):
+        return (raw,)
+    return tuple(raw)
+
+
+def _get_exclude_key_re(raw: typing.Any) -> typing.Optional[typing.Pattern]:
+    if not raw:
+        return None
+    if isinstance(raw, str):
+        return re.compile(raw)
+    return raw
+
+
+def _get_exclude_keys(raw: typing.Any) -> typing.Set[str]:
+    if not raw:
+        return set()
+    if isinstance(raw, str):
+        return {raw}
+    return set(raw)
+
+
+#: Key prefixes that should be excluded from the admin interface
+EXCLUDE_KEY_PREFIXES: typing.Tuple[str, ...] = _get_exclude_key_prefixes(
+    getattr(settings, 'REDIS_EXCLUDE_KEY_PREFIXES', ())
+)
+
+#: Regex pattern for keys that should be excluded from the admin interface
+EXCLUDE_KEY_RE: typing.Optional[typing.Pattern] = _get_exclude_key_re(
+    getattr(settings, 'REDIS_EXCLUDE_KEY_RE', None)
+)
+
+#: Exact keys that should be excluded from the admin interface
+EXCLUDE_KEYS: typing.Set[str] = _get_exclude_keys(
+    getattr(settings, 'REDIS_EXCLUDE_KEYS', ())
+)

@@ -25,6 +25,9 @@ def decode_bytes(value, encoding='utf-8', method='replace'):
 
 class RedisMeta:
     managed = False
+    exclude_key_prefixes: typing.Optional[typing.Tuple[str, ...]] = None
+    exclude_key_re: typing.Optional[typing.Pattern] = None
+    exclude_keys: typing.Optional[typing.Set[str]] = None
 
     def get_field(self, name):
         class Field:
@@ -218,6 +221,10 @@ for name, server in settings.SERVERS.items():
     if 'meta' in server:
         for key, value in server['meta'].items():
             setattr(Meta, key, value)
+
+    for exclude_attr in ('exclude_key_prefixes', 'exclude_key_re', 'exclude_keys'):
+        if exclude_attr in server:
+            setattr(Meta, exclude_attr, server[exclude_attr])
 
     server_models[name] = type(name.capitalize(), (RedisValue,), {
         '__module__': __name__,

@@ -149,6 +149,36 @@ Within the Django Admin list view the values are cropped by default to prevent r
 
    REDIS_REPR_CROP_SIZE = 150
 
+Excluding keys from the admin
+------------------------------------------------------------------------------
+
+You can exclude specific keys, key prefixes, or regex patterns from appearing
+in the admin. This is useful for third-party libraries such as django-constance,
+sessions, or cache entries that store pickled or unparseable data in Redis:
+
+.. code-block:: python
+
+   # Exclude by prefix (tuple, list, or set of prefixes):
+   REDIS_EXCLUDE_KEY_PREFIXES = ('constance:', 'session:')
+
+   # Exclude by regular expression:
+   REDIS_EXCLUDE_KEY_RE = r'^(constance|session):'
+
+   # Exclude specific exact keys:
+   REDIS_EXCLUDE_KEYS = ('secret_token', 'internal_counter')
+
+Exclusions can also be configured per server in `REDIS_SERVERS`:
+
+.. code-block:: python
+
+   REDIS_SERVERS = dict(
+       default=dict(
+           host='127.0.0.1',
+           port=6379,
+           exclude_key_prefixes=('constance:',),
+       ),
+   )
+
 TODO
 ==============================================================================
 

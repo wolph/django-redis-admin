@@ -48,7 +48,7 @@ if __name__ == '__main__':
         url=about['__url__'],
         license=about['__license__'],
         keywords=about['__title__'],
-        packages=find_packages(exclude=['docs']),
+        packages=find_packages(exclude=['docs', 'tests*']),
         long_description=readme,
         include_package_data=True,
         install_requires=[
@@ -63,6 +63,7 @@ if __name__ == '__main__':
             ],
             'tests': [
                 'pytest',
+                'pytest-django',
             ],
         },
         classifiers=[
