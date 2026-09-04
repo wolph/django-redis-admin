@@ -178,6 +178,9 @@ def test_queryset_get(redis_client: redis.Redis[bytes]) -> None:
     assert item.key == 'target_key'
     assert qs._get_cache is item
 
+    item_with_q: models.RedisValue = qs.get(Q(key='target_key'))
+    assert item_with_q.key == 'target_key'
+
     with pytest.raises(
         models.Default.DoesNotExist,
         match=r'Default matching query does not exist\.',
@@ -331,6 +334,18 @@ def test_queryset_iter_cache_and_model_name_fallback(
     items_second: list[models.RedisValue] = list(qs)
     assert len(items_second) == 1
     assert items_second[0] is items_first[0]
+
+    # Test iterating over cached queryset with slice
+    qs.slice = slice(0, 1, 1)
+    sliced_from_cache: list[models.RedisValue] = list(qs)
+    assert len(sliced_from_cache) == 1
+    assert sliced_from_cache[0] is items_first[0]
+
+    # Test len with filters when _cache is already empty dict
+    qs_empty: admin.Queryset = admin.Queryset(models.Default)
+    qs_empty.filters = [Q(key__exact='nonexistent')]
+    qs_empty._cache = collections.OrderedDict()
+    assert len(qs_empty) == 0
 
     mock_model: mock.MagicMock = mock.MagicMock()
     mock_model._meta.model_name = None

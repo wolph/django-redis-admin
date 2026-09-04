@@ -197,7 +197,7 @@ class Queryset:
     def __len__(self) -> int:
         if self.filters:
             # Arbitrary number, we don't want to search if not needed
-            if not self._cache:
+            if self._cache is None:
                 list(iter(self[: self.slice_limit]))
 
             return len(self._cache) if self._cache is not None else 0
@@ -223,7 +223,7 @@ class Queryset:
     ) -> models.RedisValue:
         self._get_cache = None
         try:
-            self._get_cache = next(iter(self.filter(**kwargs)))
+            self._get_cache = next(iter(self.filter(*args, **kwargs)))
         except StopIteration as exc:
             meta_obj: typing.Any = getattr(self.model, '_meta', None)
             object_name: str = str(
@@ -235,7 +235,7 @@ class Queryset:
         return self._get_cache
 
     def _get_keys(self) -> list[str]:
-        self.slice = index = self.slice or slice(self.slice_limit)
+        index: slice = self.slice or slice(self.slice_limit)
         slice_size: int = (
             min(index.stop, self.slice_limit)
             if index.stop is not None
@@ -329,7 +329,17 @@ class Queryset:
         logger.info('searching %r with query %r', model_name, self.q)
 
         if self._cache is not None:
-            for value in self._cache.values():
+            cached_values: typing.Iterable[models.RedisValue]
+            if self.slice is not None:
+                cached_values = itertools.islice(
+                    self._cache.values(),
+                    self.slice.start,
+                    self.slice.stop,
+                    self.slice.step,
+                )
+            else:
+                cached_values = self._cache.values()
+            for value in cached_values:
                 yield value
             return
 
