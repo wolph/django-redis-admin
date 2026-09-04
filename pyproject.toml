@@ -81,3 +81,7 @@ tox = ['tox>=4', 'tox-uv>=1', 'tox-gh-actions']
 
 [tool.uv]
 exclude-newer = "14 days"
+
+[tool.codespell]
+skip = '*.lock,*.svg,*.egg-info,./.git,./.tox,./.venv,./.ruff_cache,./.mypy_cache,./.pytest_cache,./build,./dist,./htmlcov,./docs/_build,*/__pycache__'
+check-hidden = true

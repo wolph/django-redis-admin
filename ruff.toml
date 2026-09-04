@@ -1,0 +1,97 @@
+target-version = 'py310'
+
+exclude = [
+    '.venv',
+    '.tox',
+]
+
+line-length = 79
+extend-exclude = ['*.md']
+
+[lint]
+ignore = [
+    'A001',
+    'A002',
+    'A003',
+    'B023',
+    'B024',
+    'D205',
+    'D212',
+    'RET505',
+    'TRY003',
+    'RET507',
+    'C405',
+    'C406',
+    'C408',
+    'SIM114',
+    'RET506',
+    'Q001',
+    'Q002',
+    'FA100',
+    'COM812',
+    'ISC001',
+    'SIM108',
+    'RUF100',
+    'D100',
+    'D101',
+    'D102',
+    'D103',
+    'D104',
+    'D105',
+    'D106',
+    'D107',
+]
+
+select = [
+    'A',
+    'ASYNC',
+    'B',
+    'C4',
+    'C90',
+    'COM',
+    'D',
+    'E',
+    'F',
+    'FA',
+    'I',
+    'ICN',
+    'INP',
+    'ISC',
+    'N',
+    'PERF',
+    'PIE',
+    'Q',
+    'RET',
+    'RUF',
+    'SIM',
+    'T20',
+    'TD',
+    'TRY',
+    'UP',
+]
+
+[lint.per-file-ignores]
+'*tests/*' = ['INP001', 'T201', 'T203', 'ASYNC109', 'B007']
+'test_redis_admin/*' = ['INP001', 'T201']
+'docs/*' = ['INP001', 'E501']
+
+[lint.pydocstyle]
+convention = 'google'
+ignore-decorators = [
+    'typing.overload',
+    'typing.override',
+]
+
+[lint.isort]
+case-sensitive = true
+combine-as-imports = true
+force-wrap-aliases = true
+
+[lint.flake8-quotes]
+docstring-quotes = 'single'
+inline-quotes = 'single'
+multiline-quotes = 'single'
+
+[format]
+quote-style = 'single'
+line-ending = 'lf'

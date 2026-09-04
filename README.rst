@@ -154,7 +154,7 @@ Excluding keys from the admin
 
 You can exclude specific keys, key prefixes, or regex patterns from appearing
 in the admin. This is useful for third-party libraries such as django-constance,
-sessions, or cache entries that store pickled or unparseable data in Redis:
+sessions, or cache entries that store pickled or unparsable data in Redis:
 
 .. code-block:: python
 

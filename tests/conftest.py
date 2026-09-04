@@ -2,10 +2,15 @@ import socket
 import subprocess
 import time
 import typing
+
 import pytest
 import redis
 from django.conf import settings as django_settings
-from redis_admin import client, models, settings as redis_settings
+
+from redis_admin import (
+    client,
+    settings as redis_settings,
+)
 
 
 def get_free_port() -> int:
@@ -49,7 +54,9 @@ def redis_server_port() -> typing.Generator[int, None, None]:
     if not connected:
         proc.terminate()
         proc.wait()
-        raise RuntimeError(f'Could not connect to test redis-server on port {port}')
+        raise RuntimeError(
+            f'Could not connect to test redis-server on port {port}'
+        )
 
     yield port
 
@@ -58,8 +65,10 @@ def redis_server_port() -> typing.Generator[int, None, None]:
 
 
 @pytest.fixture
-def redis_client(redis_server_port: int) -> typing.Generator[redis.Redis, None, None]:
-    server_conf: typing.Dict[str, typing.Any] = {
+def redis_client(
+    redis_server_port: int,
+) -> typing.Generator[redis.Redis, None, None]:
+    server_conf: dict[str, typing.Any] = {
         'host': '127.0.0.1',
         'port': redis_server_port,
     }
