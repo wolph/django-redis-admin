@@ -1,9 +1,15 @@
+# pyright: reportPrivateUsage=false
+from __future__ import annotations
+
 import base64
 import binascii
+import builtins
 import collections
 import json
 import logging
+import re
 import typing
+from datetime import datetime, timedelta
 
 import redis
 from django.db import models
@@ -25,7 +31,7 @@ def decode_bytes(
 class RedisMeta:
     managed: bool = False
     exclude_key_prefixes: tuple[str, ...] | None = None
-    exclude_key_re: typing.Pattern | None = None
+    exclude_key_re: re.Pattern[str] | None = None
     exclude_keys: set[str] | None = None
 
     def get_field(self, name: str) -> typing.Any:
@@ -41,63 +47,77 @@ class RedisMeta:
 
 
 class RedisValue(models.Model):
-    TYPES: typing.ClassVar[dict[str, type]] = {}
+    if typing.TYPE_CHECKING:
+        _meta: typing.ClassVar[typing.Any]
 
-    key = models.CharField(max_length=256, primary_key=True)
-    raw_value = models.TextField()
-    type = models.CharField(max_length=8)
-    expires_at = models.DateTimeField(null=True, blank=True)
-    idle_since = models.DateTimeField(null=True, blank=True)
-    base64 = models.BooleanField()
-    json = models.BooleanField()
+    TYPES: typing.ClassVar[dict[str, builtins.type[RedisValue]]] = {}
+
+    key: models.CharField[str, str] = models.CharField(
+        max_length=256, primary_key=True
+    )
+    raw_value: models.TextField[str, str] = models.TextField()
+    type: models.CharField[str, str] = models.CharField(max_length=8)
+    expires_at: models.DateTimeField[datetime | None, datetime | None] = (
+        models.DateTimeField(null=True, blank=True)
+    )
+    idle_since: models.DateTimeField[datetime | None, datetime | None] = (
+        models.DateTimeField(null=True, blank=True)
+    )
+    base64: models.BooleanField[bool, bool] = models.BooleanField()
+    json: models.BooleanField[bool, bool] = models.BooleanField()
 
     @classmethod
     def register_type(
         cls, type: str
-    ) -> typing.Callable[[typing.Any], typing.Any]:
-        def _register_type(class_: typing.Any) -> typing.Any:
+    ) -> typing.Callable[
+        [builtins.type[typing.Any]], builtins.type[typing.Any]
+    ]:
+        def _register_type(
+            class_: builtins.type[typing.Any],
+        ) -> builtins.type[typing.Any]:
             cls.TYPES[type] = class_
             return class_
 
         return _register_type
 
     @classmethod
-    def create(cls, type: str, **kwargs: typing.Any) -> typing.Any:
-        class_: typing.Any = cls.TYPES.get(type, cls)
-        return class_(type=type, **kwargs)
+    def create(cls, type: str, **kwargs: typing.Any) -> RedisValue:
+        class_: builtins.type[RedisValue] = cls.TYPES.get(type, cls)
+        instance: RedisValue = class_(type=type, **kwargs)
+        return instance
 
     def decode_string(self, raw_value: typing.Any) -> typing.Any:
-        raw_value = decode_bytes(raw_value) or ''
+        decoded: typing.Any = decode_bytes(raw_value) or ''
 
         if settings.BASE64_KEY_RE.match(self.key):
             try:
-                raw_value = decode_bytes(base64.b64decode(raw_value))
+                decoded = decode_bytes(base64.b64decode(decoded))
                 self.base64 = True
             except binascii.Error:
                 self.base64 = False
 
         if settings.JSON_KEY_RE.match(self.key):
             try:
-                raw_value = settings.JSON_MODULE.loads(raw_value)
+                decoded = settings.JSON_MODULE.loads(decoded)
                 self.json = True
             except json.JSONDecodeError as e:
-                logger.debug('error %r attempting json on: %r', e, raw_value)
+                logger.debug('error %r attempting json on: %r', e, decoded)
                 self.json = False
 
-        return raw_value
+        return decoded
 
     @property
     def value(self) -> typing.Any:
         return self.raw_value
 
     @property
-    def ttl(self) -> typing.Any:
+    def ttl(self) -> timedelta | None:
         if self.expires_at:
             return self.expires_at - timezone.now()
         return None
 
     @property
-    def idle(self) -> typing.Any:
+    def idle(self) -> timedelta | None:
         if self.idle_since:
             return timezone.now() - self.idle_since
         return None
@@ -114,7 +134,7 @@ class RedisValue(models.Model):
             value = value[:crop_half] + '...' + value[-crop_half:]
         return value
 
-    def fetch_value(self, client: redis.Redis) -> typing.Any:
+    def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         """Fetch the value.
 
         Note that if a pipe is passed as `client` the result will be in the
@@ -140,7 +160,7 @@ class RedisValue(models.Model):
 
 @RedisValue.register_type('string')
 class RedisString(RedisValue):
-    def fetch_value(self, client: redis.Redis) -> typing.Any:
+    def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.get(self.key)
 
     @property
@@ -150,62 +170,62 @@ class RedisString(RedisValue):
 
 @RedisValue.register_type('list')
 class RedisList(RedisValue):
-    def fetch_value(self, client: redis.Redis) -> typing.Any:
+    def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.lrange(self.key, 0, -1)
 
     @property
     def value(self) -> list[typing.Any]:
         raw_value: typing.Any = self.raw_value
         if raw_value:
-            raw_value = [self.decode_string(v) for v in raw_value]
-
-        return raw_value
+            return [self.decode_string(v) for v in raw_value]
+        return []
 
 
 @RedisValue.register_type('set')
-class RedisSet(RedisList):
-    def fetch_value(self, client: redis.Redis) -> typing.Any:
+class RedisSet(RedisValue):
+    def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.smembers(self.key)
 
     @property
     def value(self) -> set[typing.Any]:
-        return set(super().value)
+        raw_value: typing.Any = self.raw_value
+        if raw_value:
+            return {self.decode_string(v) for v in raw_value}
+        return set()
 
 
 @RedisValue.register_type('hash')
 class RedisHash(RedisValue):
-    def fetch_value(self, client: redis.Redis) -> typing.Any:
+    def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.hgetall(self.key)
 
     @property
     def value(self) -> typing.Mapping[typing.Any, typing.Any]:
         raw_value: typing.Any = self.raw_value
         if raw_value:
-            raw_value = {
+            return {
                 decode_bytes(k): self.decode_string(v)
                 for k, v in raw_value.items()
             }
-
-        return raw_value
+        return {}
 
 
 @RedisValue.register_type('zset')
 class RedisZSet(RedisHash):
-    def fetch_value(self, client: redis.Redis) -> typing.Any:
+    def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.zrangebyscore(self.key, '-inf', '+inf', withscores=True)
 
     @property
     def value(self) -> collections.OrderedDict[typing.Any, typing.Any]:
         raw_value: typing.Any = self.raw_value
         if raw_value:
-            raw_value = collections.OrderedDict(
+            return collections.OrderedDict(
                 (decode_bytes(k), self.decode_string(v)) for k, v in raw_value
             )
+        return collections.OrderedDict()
 
-        return raw_value
 
-
-server_models: dict[str, type] = {}
+server_models: dict[str, type[RedisValue]] = {}
 
 for name, server in settings.SERVERS.items():
 
@@ -225,7 +245,7 @@ for name, server in settings.SERVERS.items():
         if exclude_attr in server:
             setattr(Meta, exclude_attr, server[exclude_attr])
 
-    server_models[name] = type(
+    model_class: type[RedisValue] = type(
         name.capitalize(),
         (RedisValue,),
         {
@@ -233,4 +253,24 @@ for name, server in settings.SERVERS.items():
             'Meta': Meta,
         },
     )
-    globals()[name.capitalize()] = server_models[name]
+    server_models[name] = model_class
+
+    model_meta: typing.Any = model_class._meta
+    if 'meta' in server:
+        for key, value in server['meta'].items():
+            setattr(model_meta, key, value)
+
+    for exclude_attr in (
+        'exclude_key_prefixes',
+        'exclude_key_re',
+        'exclude_keys',
+    ):
+        if exclude_attr in server:
+            setattr(model_meta, exclude_attr, server[exclude_attr])
+
+    globals()[name.capitalize()] = model_class
+
+if typing.TYPE_CHECKING:
+
+    class Default(RedisValue):
+        _meta: typing.ClassVar[typing.Any]

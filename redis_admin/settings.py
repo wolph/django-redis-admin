@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import typing
 
@@ -60,12 +62,14 @@ def _get_exclude_key_prefixes(raw: typing.Any) -> tuple[str, ...]:
     return tuple(raw)
 
 
-def _get_exclude_key_re(raw: typing.Any) -> typing.Pattern | None:
+def _get_exclude_key_re(raw: typing.Any) -> re.Pattern[str] | None:
     if not raw:
         return None
     if isinstance(raw, str):
         return re.compile(raw)
-    return raw
+    if isinstance(raw, re.Pattern):
+        return typing.cast(re.Pattern[str], raw)
+    return None
 
 
 def _get_exclude_keys(raw: typing.Any) -> set[str]:
@@ -82,7 +86,7 @@ EXCLUDE_KEY_PREFIXES: tuple[str, ...] = _get_exclude_key_prefixes(
 )
 
 #: Regex pattern for keys that should be excluded from the admin interface
-EXCLUDE_KEY_RE: typing.Pattern | None = _get_exclude_key_re(
+EXCLUDE_KEY_RE: re.Pattern[str] | None = _get_exclude_key_re(
     getattr(settings, 'REDIS_EXCLUDE_KEY_RE', None)
 )
 
@@ -90,3 +94,7 @@ EXCLUDE_KEY_RE: typing.Pattern | None = _get_exclude_key_re(
 EXCLUDE_KEYS: set[str] = _get_exclude_keys(
     getattr(settings, 'REDIS_EXCLUDE_KEYS', ())
 )
+
+get_exclude_key_prefixes = _get_exclude_key_prefixes
+get_exclude_key_re = _get_exclude_key_re
+get_exclude_keys = _get_exclude_keys

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import socket
 import subprocess
 import time
@@ -24,7 +26,7 @@ def get_free_port() -> int:
 @pytest.fixture(scope='session')
 def redis_server_port() -> typing.Generator[int, None, None]:
     port: int = get_free_port()
-    proc: subprocess.Popen = subprocess.Popen(
+    proc: subprocess.Popen[bytes] = subprocess.Popen(
         [
             'redis-server',
             '--port',
@@ -41,7 +43,7 @@ def redis_server_port() -> typing.Generator[int, None, None]:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    test_client: redis.Redis = redis.Redis(host='127.0.0.1', port=port)
+    test_client: redis.Redis[bytes] = redis.Redis(host='127.0.0.1', port=port)
     connected: bool = False
     for _ in range(50):
         try:
@@ -67,7 +69,7 @@ def redis_server_port() -> typing.Generator[int, None, None]:
 @pytest.fixture
 def redis_client(
     redis_server_port: int,
-) -> typing.Generator[redis.Redis, None, None]:
+) -> typing.Generator[redis.Redis[bytes], None, None]:
     server_conf: dict[str, typing.Any] = {
         'host': '127.0.0.1',
         'port': redis_server_port,
@@ -77,7 +79,9 @@ def redis_client(
     client.masters.clear()
     client.slaves.clear()
 
-    r: redis.Redis = redis.Redis(host='127.0.0.1', port=redis_server_port)
+    r: redis.Redis[bytes] = redis.Redis(
+        host='127.0.0.1', port=redis_server_port
+    )
     r.flushdb()
 
     yield r

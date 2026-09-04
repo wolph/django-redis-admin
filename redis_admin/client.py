@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import typing
 
@@ -8,8 +10,8 @@ from . import settings
 
 logger: logging.Logger = logging.getLogger(__name__)
 _sentinel: sentinel.Sentinel | None = None
-masters: dict[str, redis.Redis] = {}
-slaves: dict[str, redis.Redis] = {}
+masters: dict[str, redis.Redis[bytes]] = {}
+slaves: dict[str, redis.Redis[bytes]] = {}
 
 
 def get_sentinel() -> sentinel.Sentinel:
@@ -33,13 +35,18 @@ def _clean_server_options(
     return cleaned
 
 
-def get_master(name: str) -> redis.Redis:
+def get_master(name: str) -> redis.Redis[bytes]:
     server: dict[str, typing.Any] = settings.SERVERS.get(name, {}).copy()
     if 'service_name' in server:
         server.setdefault('socket_timeout', settings.SOCKET_TIMEOUT)
         logger.debug('Getting master from sentinel %s: %r', name, server)
         cleaned_server: dict[str, typing.Any] = _clean_server_options(server)
-        return get_sentinel().master_for(**cleaned_server)
+        sentinel_client: typing.Any = get_sentinel()
+        master: redis.Redis[bytes] = typing.cast(
+            'redis.Redis[bytes]',
+            sentinel_client.master_for(**cleaned_server),
+        )
+        return master
 
     if name not in masters:
         master_server: dict[str, typing.Any] = (
@@ -50,18 +57,24 @@ def get_master(name: str) -> redis.Redis:
         )
         cleaned_master.setdefault('socket_timeout', settings.SOCKET_TIMEOUT)
         logger.debug('Connecting to master %s: %r', name, cleaned_master)
-        masters[name] = redis.Redis(**cleaned_master)
+        masters[name] = typing.cast(
+            'redis.Redis[bytes]', redis.Redis(**cleaned_master)
+        )
 
     return masters[name]
 
 
-def get_slave(name: str) -> redis.Redis:
+def get_slave(name: str) -> redis.Redis[bytes]:
     server: dict[str, typing.Any] = settings.SERVERS.get(name, {}).copy()
     if 'service_name' in server:
         server.setdefault('socket_timeout', settings.SOCKET_TIMEOUT)
         logger.debug('Getting slave from sentinel %s: %r', name, server)
         cleaned_server: dict[str, typing.Any] = _clean_server_options(server)
-        return get_sentinel().slave_for(**cleaned_server)
+        sentinel_client: typing.Any = get_sentinel()
+        slave: redis.Redis[bytes] = typing.cast(
+            'redis.Redis[bytes]', sentinel_client.slave_for(**cleaned_server)
+        )
+        return slave
 
     if name not in slaves:
         slave_server: dict[str, typing.Any] = (
@@ -72,6 +85,8 @@ def get_slave(name: str) -> redis.Redis:
         )
         cleaned_slave.setdefault('socket_timeout', settings.SOCKET_TIMEOUT)
         logger.debug('Connecting to slave %s: %r', name, cleaned_slave)
-        slaves[name] = redis.Redis(**cleaned_slave)
+        slaves[name] = typing.cast(
+            'redis.Redis[bytes]', redis.Redis(**cleaned_slave)
+        )
 
     return slaves[name]

@@ -1,13 +1,18 @@
+# pyright: reportPrivateUsage=false
+from __future__ import annotations
+
 import collections
 import itertools
 import logging
+import re
 import typing
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import redis
 from django.conf import settings as django_settings
 from django.contrib import admin
 from django.db.models import Q
+from django.http import HttpRequest
 from django.utils import timezone
 
 from . import client, models, settings
@@ -19,7 +24,7 @@ def grouper(
     iterable: typing.Iterable[typing.Any],
     n: int,
     fillvalue: typing.Any = None,
-) -> typing.Iterator[typing.Any]:
+) -> typing.Iterator[tuple[typing.Any, ...]]:
     args: list[typing.Iterator[typing.Any]] = [iter(iterable)] * n
     return itertools.zip_longest(*args, fillvalue=fillvalue)
 
@@ -27,57 +32,58 @@ def grouper(
 class Query:
     order_by: typing.ClassVar[tuple[typing.Any, ...]] = ()
 
-    def __init__(self, queryset: typing.Any) -> None:
-        self.queryset: typing.Any = queryset
+    def __init__(self, queryset: Queryset) -> None:
+        self.queryset: Queryset = queryset
 
-    def select_related(
-        self, *args: typing.Any, **kwargs: typing.Any
-    ) -> 'Query':
+    def select_related(self, *args: typing.Any, **kwargs: typing.Any) -> Query:
         assert not args and not kwargs
         return self
 
 
 class Queryset:
     def __init__(
-        self, model: models.RedisValue, slice_limit: int = 101
+        self, model: type[models.RedisValue], slice_limit: int = 101
     ) -> None:
         self.slice_limit: int = slice_limit
         self.q: str = '*'
         self.filters: list[Q] = []
         self.admin: typing.Any = admin
-        self.model: models.RedisValue = model
+        self.model: type[models.RedisValue] = model
         self._meta: typing.Any = model._meta
-        self.master: redis.Redis = client.get_master(model._meta.model_name)
-        self.slave: redis.Redis = client.get_slave(model._meta.model_name)
-        self._cache: dict[str, typing.Any] | None = None
-        self._get_cache: typing.Any = None
+        model_name: str = str(getattr(self._meta, 'model_name', None) or '')
+        self.master: redis.Redis[bytes] = client.get_master(model_name)
+        self.slave: redis.Redis[bytes] = client.get_slave(model_name)
+        self._cache: collections.OrderedDict[str, models.RedisValue] | None = (
+            None
+        )
+        self._get_cache: models.RedisValue | None = None
         self.slice: slice | None = None
 
-        meta_prefixes: tuple[str, ...] = settings._get_exclude_key_prefixes(
+        meta_prefixes: tuple[str, ...] = settings.get_exclude_key_prefixes(
             getattr(self._meta, 'exclude_key_prefixes', ())
         )
-        meta_re: typing.Pattern | None = settings._get_exclude_key_re(
+        meta_re: re.Pattern[str] | None = settings.get_exclude_key_re(
             getattr(self._meta, 'exclude_key_re', None)
         )
-        meta_keys: set[str] = settings._get_exclude_keys(
+        meta_keys: set[str] = settings.get_exclude_keys(
             getattr(self._meta, 'exclude_keys', ())
         )
 
-        global_prefixes: tuple[str, ...] = settings._get_exclude_key_prefixes(
+        global_prefixes: tuple[str, ...] = settings.get_exclude_key_prefixes(
             getattr(
                 django_settings,
                 'REDIS_EXCLUDE_KEY_PREFIXES',
                 getattr(settings, 'EXCLUDE_KEY_PREFIXES', ()),
             )
         )
-        global_re: typing.Pattern | None = settings._get_exclude_key_re(
+        global_re: re.Pattern[str] | None = settings.get_exclude_key_re(
             getattr(
                 django_settings,
                 'REDIS_EXCLUDE_KEY_RE',
                 getattr(settings, 'EXCLUDE_KEY_RE', None),
             )
         )
-        global_keys: set[str] = settings._get_exclude_keys(
+        global_keys: set[str] = settings.get_exclude_keys(
             getattr(
                 django_settings,
                 'REDIS_EXCLUDE_KEYS',
@@ -89,10 +95,10 @@ class Queryset:
             sorted(set(meta_prefixes + global_prefixes))
         )
         self.exclude_keys: set[str] = meta_keys | global_keys
-        self.exclude_key_res: list[typing.Pattern] = [
+        self.exclude_key_res: list[re.Pattern[str]] = [
             pattern for pattern in (meta_re, global_re) if pattern is not None
         ]
-        self.exclude_key_re: typing.Pattern | None = (
+        self.exclude_key_re: re.Pattern[str] | None = (
             self.exclude_key_res[0] if self.exclude_key_res else None
         )
 
@@ -115,11 +121,11 @@ class Queryset:
     def count(self) -> int:
         return len(self)
 
-    def order_by(self, *args: typing.Any, **kwargs: typing.Any) -> 'Queryset':
+    def order_by(self, *args: typing.Any, **kwargs: typing.Any) -> Queryset:
         return self
 
-    def filter(self, *filters: Q, **raw_filters: typing.Any) -> 'Queryset':
-        self._cache = {}
+    def filter(self, *filters: Q, **raw_filters: typing.Any) -> Queryset:
+        self._cache = None
         self._get_cache = None
         self.filters = list(filters)
         if raw_filters:
@@ -171,7 +177,7 @@ class Queryset:
         message: str = f'queryset.{key}'
         raise AttributeError(f'Unknown attribute {message}')
 
-    def _clone(self) -> 'Queryset':
+    def _clone(self) -> Queryset:
         return self
 
     def __len__(self) -> int:
@@ -182,16 +188,33 @@ class Queryset:
 
             return len(self._cache) if self._cache is not None else 0
 
-        keyspace: dict[str, typing.Any] = self.slave.info('keyspace')
-        db: int = self.slave.connection_pool.connection_kwargs.get('db', 0)
-        return keyspace.get(f'db{db}', {}).get('keys', 1000)
+        keyspace: typing.Mapping[str, typing.Any] = self.slave.info('keyspace')
+        db: int = int(
+            self.slave.connection_pool.connection_kwargs.get('db', 0)
+        )
+        db_key: str = f'db{db}'
+        if db_key in keyspace:
+            raw_info: object = keyspace[db_key]
+            if isinstance(raw_info, dict):
+                info_dict: dict[str, object] = typing.cast(
+                    dict[str, object], raw_info
+                )
+                keys_val: object = info_dict.get('keys')
+                if isinstance(keys_val, (int, str)):
+                    return int(keys_val)
+        return 1000
 
-    def get(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def get(
+        self, *args: typing.Any, **kwargs: typing.Any
+    ) -> models.RedisValue:
         self._get_cache = None
         try:
             self._get_cache = next(iter(self.filter(**kwargs)))
         except StopIteration as exc:
-            object_name: str = self.model._meta.object_name
+            meta_obj: typing.Any = getattr(self.model, '_meta', None)
+            object_name: str = str(
+                getattr(meta_obj, 'object_name', None) or 'RedisValue'
+            )
             raise self.model.DoesNotExist(
                 f'{object_name} matching query does not exist.'
             ) from exc
@@ -208,7 +231,7 @@ class Queryset:
             self.q, count=slice_size
         )
         decoded_keys_iter: typing.Iterator[str] = (
-            models.decode_bytes(k) for k in raw_keys_iter
+            str(models.decode_bytes(k)) for k in raw_keys_iter
         )
         filtered_keys_iter: typing.Iterator[str] = (
             k for k in decoded_keys_iter if not self.is_excluded(k)
@@ -221,33 +244,38 @@ class Queryset:
 
     def _fetch_metadata(
         self, keys: list[str]
-    ) -> collections.OrderedDict[str, typing.Any]:
-        now: timezone.datetime = timezone.now()
+    ) -> collections.OrderedDict[str, models.RedisValue]:
+        now: datetime = timezone.now()
         with self.slave.pipeline() as pipe:
+            p: typing.Any = pipe
             for key in keys:
-                pipe.type(key)
-                pipe.pttl(key)
-                pipe.object('IDLETIME', key)
+                p.type(key)
+                p.pttl(key)
+                p.object('IDLETIME', key)
 
-            values: collections.OrderedDict[str, typing.Any] = (
+            values: collections.OrderedDict[str, models.RedisValue] = (
                 collections.OrderedDict()
             )
             for key, result in zip(
                 keys, grouper(pipe.execute(), 3), strict=True
             ):
                 type_, ttl, idle = result
-                type_ = type_.decode()
+                decoded_type: str = str(models.decode_bytes(type_))
 
-                expires_at: timezone.datetime | None = (
-                    now + timedelta(seconds=ttl / 1000) if ttl > 0 else None
+                expires_at: datetime | None = (
+                    now + timedelta(seconds=ttl / 1000)
+                    if ttl is not None and ttl > 0
+                    else None
                 )
-                idle_since: timezone.datetime | None = (
-                    now - timedelta(seconds=idle) if idle > 0 else None
+                idle_since: datetime | None = (
+                    now - timedelta(seconds=idle)
+                    if idle is not None and idle > 0
+                    else None
                 )
 
                 value: models.RedisValue = self.model.create(
                     key=key,
-                    type=type_,
+                    type=decoded_type,
                     expires_at=expires_at,
                     idle_since=idle_since,
                 )
@@ -258,7 +286,7 @@ class Queryset:
     def _fetch_values(
         self,
         keys: list[str],
-        values: collections.OrderedDict[str, typing.Any],
+        values: collections.OrderedDict[str, models.RedisValue],
     ) -> None:
         with self.slave.pipeline() as pipe:
             for key in keys:
@@ -277,18 +305,18 @@ class Queryset:
                     model_value = values[key]
                     model_value.raw_value = model_value.fetch_value(self.slave)
 
-    def __iter__(self) -> typing.Iterator[typing.Any]:
-        logger.info(
-            'searching %r with query %r', self.model._meta.model_name, self.q
-        )
+    def __iter__(self) -> typing.Iterator[models.RedisValue]:
+        meta_obj: typing.Any = getattr(self.model, '_meta', None)
+        model_name: str = str(getattr(meta_obj, 'model_name', None) or '')
+        logger.info('searching %r with query %r', model_name, self.q)
 
-        if self._cache:
+        if self._cache is not None:
             for value in self._cache.values():
                 yield value
             return
 
         keys: list[str] = self._get_keys()
-        values: collections.OrderedDict[str, typing.Any] = (
+        values: collections.OrderedDict[str, models.RedisValue] = (
             self._fetch_metadata(keys)
         )
         self._fetch_values(keys, values)
@@ -297,10 +325,10 @@ class Queryset:
         for value in values.values():
             yield value
 
-    def __getitem__(self, index: int | slice) -> 'Queryset':
+    def __getitem__(self, index: int | slice) -> Queryset:
         if isinstance(index, int):
             self.slice = slice(index, index + 1, 1)
-        elif isinstance(index, slice):
+        elif type(index) is slice:
             self.slice = index
         else:
             raise TypeError(
@@ -310,9 +338,18 @@ class Queryset:
         return self
 
 
-class RedisAdmin(admin.ModelAdmin):
-    show_full_result_count: bool = False
-    list_display: typing.ClassVar[list[str]] = [
+if typing.TYPE_CHECKING:
+    _ModelAdminBase = admin.ModelAdmin[models.RedisValue]
+else:
+    _ModelAdminBase = admin.ModelAdmin
+
+
+class RedisAdmin(_ModelAdminBase):
+    show_full_result_count: typing.ClassVar[bool] = False
+    list_display: (
+        list[typing.Callable[[models.RedisValue], str | bool] | str]
+        | tuple[typing.Callable[[models.RedisValue], str | bool] | str, ...]
+    ) = (
         'key',
         'type',
         'expires_at',
@@ -321,15 +358,17 @@ class RedisAdmin(admin.ModelAdmin):
         'cropped_value',
         'json',
         'base64',
-    ]
-    search_fields: typing.ClassVar[tuple[str, ...]] = ('key__contains',)
+    )
+    search_fields: typing.ClassVar[list[str] | tuple[str, ...]] = (
+        'key__contains',
+    )
 
     # Keep everything read-only for now, saving isn't implemented yet
-    readonly_fields: typing.ClassVar[list[str]] = [
+    readonly_fields: typing.ClassVar[list[str] | tuple[str, ...]] = tuple(
         f.name for f in models.RedisValue._meta.get_fields()
-    ]
+    )
 
-    def get_queryset(self, request: typing.Any) -> Queryset:
+    def get_queryset(self, request: HttpRequest) -> typing.Any:
         return Queryset(self.model, self.list_per_page + 1)
 
 

@@ -1,3 +1,7 @@
+# pyright: reportPrivateUsage=false
+from __future__ import annotations
+
+import re
 import typing
 
 import pytest
@@ -12,7 +16,7 @@ from redis_admin import (
 
 
 def test_exclude_key_prefixes_global(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis_client.set('constance:FOO', 'val1')
     redis_client.set('constance:BAR', 'val2')
@@ -37,7 +41,7 @@ def test_exclude_key_prefixes_global(
 
 
 def test_exclude_key_prefixes_per_server(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis_client.set('constance:FOO', 'val1')
     redis_client.set('myapp:USER', 'val2')
@@ -56,7 +60,7 @@ def test_exclude_key_prefixes_per_server(
 
 
 def test_exclude_key_re_global(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis_client.set('constance:FOO', 'val1')
     redis_client.set('cache:SESSION', 'val2')
@@ -79,7 +83,7 @@ def test_exclude_key_re_global(
 
 
 def test_exclude_keys_exact(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis_client.set('secret_key', 'val1')
     redis_client.set('normal_key', 'val2')
@@ -98,7 +102,7 @@ def test_exclude_keys_exact(
 
 
 def test_exclude_get_raises_does_not_exist(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis_client.set('constance:FOO', 'val1')
     redis_client.set('myapp:USER', 'val2')
@@ -122,7 +126,7 @@ def test_exclude_get_raises_does_not_exist(
 
 
 def test_exclude_filter_search(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis_client.set('constance:FOO', 'val1')
     redis_client.set('myapp:USER', 'val2')
@@ -145,7 +149,7 @@ def test_exclude_filter_search(
 
 
 def test_exclude_pagination(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     for i in range(30):
         redis_client.set(f'constance:key_{i:02d}', f'c_val_{i}')
@@ -169,7 +173,7 @@ def test_exclude_pagination(
         assert item.key.startswith('myapp:')
 
 
-def test_no_exclusions_by_default(redis_client: redis.Redis) -> None:
+def test_no_exclusions_by_default(redis_client: redis.Redis[bytes]) -> None:
     redis_client.set('constance:FOO', 'val1')
     redis_client.set('myapp:USER', 'val2')
 
@@ -180,7 +184,7 @@ def test_no_exclusions_by_default(redis_client: redis.Redis) -> None:
 
 
 def test_exclude_single_string_prefix_and_key(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis_client.set('constance:FOO', 'val1')
     redis_client.set('single_exact_key', 'val2')
@@ -206,14 +210,12 @@ def test_exclude_single_string_prefix_and_key(
 
 
 def test_exclude_compiled_regex(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import re
-
     redis_client.set('constance:FOO', 'val1')
     redis_client.set('normal_key', 'val2')
 
-    pattern: typing.Pattern = re.compile(r'^constance:')
+    pattern: re.Pattern[str] = re.compile(r'^constance:')
     monkeypatch.setattr(
         django_settings, 'REDIS_EXCLUDE_KEY_RE', pattern, raising=False
     )
@@ -225,7 +227,7 @@ def test_exclude_compiled_regex(
 
 
 def test_exclude_various_redis_types(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis_client.rpush('constance:list', 'item1', 'item2')
     redis_client.sadd('constance:set', 's1', 's2')
@@ -247,7 +249,7 @@ def test_exclude_various_redis_types(
 
 
 def test_exclude_combines_meta_and_global(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     redis_client.set('global_prefix:1', 'val1')
     redis_client.set('meta_prefix:2', 'val2')
@@ -273,7 +275,7 @@ def test_exclude_combines_meta_and_global(
 
 
 def test_redis_admin_get_queryset(
-    redis_client: redis.Redis, monkeypatch: pytest.MonkeyPatch
+    redis_client: redis.Redis[bytes], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from django.contrib.admin.sites import AdminSite
     from django.test import RequestFactory
