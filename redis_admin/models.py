@@ -161,6 +161,11 @@ class RedisValue(models.Model):
         message: str = f'{self.__class__.__name__}.{key}'
         raise AttributeError(f'Unknown attribute {message}')
 
+    @override
+    def __str__(self) -> str:
+        return str(self.key)
+
+    @override
     def __repr__(self) -> str:
         return (
             f'<{self.__class__.__name__}[{self.key}] '

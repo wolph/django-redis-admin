@@ -322,3 +322,16 @@ def test_server_models_dynamic_registration(
 
     monkeypatch.undo()
     importlib.reload(models)
+
+
+def test_redis_value_str_is_the_key() -> None:
+    value: models.RedisValue = models.RedisValue.create(
+        key='menu:breakfast', type='list'
+    )
+    assert str(value) == 'menu:breakfast'
+
+
+def test_app_config_verbose_name() -> None:
+    from django.apps import apps
+
+    assert apps.get_app_config('redis_admin').verbose_name == 'Redis'
