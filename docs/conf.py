@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import typing
 from datetime import date
 
 import django
@@ -60,3 +61,10 @@ intersphinx_mapping: dict[str, tuple[str, str | None]] = {
 # -- HTML output --------------------------------------------------------------
 
 html_theme: str = 'furo'
+html_title: str = f'{project} {release}'
+html_static_path: list[str] = ['_static']
+html_theme_options: dict[str, typing.Any] = {
+    'source_repository': 'https://github.com/wolph/django-redis-admin/',
+    'source_branch': 'develop',
+    'source_directory': 'docs/',
+}
