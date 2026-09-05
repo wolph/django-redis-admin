@@ -8,9 +8,10 @@ from unittest import mock
 import pytest
 import redis
 from django.contrib.admin.sites import AdminSite
+from django.contrib.admin.utils import quote
 from django.contrib.auth.models import User
 from django.db.models import Q
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
 from typing_extensions import override
 
 from redis_admin import admin, models
@@ -395,3 +396,76 @@ def test_redis_admin_properties_and_views(
     search_request.user = request.user
     search_resp: typing.Any = model_admin.changelist_view(search_request)
     assert search_resp.status_code == 200
+
+
+def test_redis_admin_refuses_writes(redis_client: redis.Redis[bytes]) -> None:
+    site: AdminSite = AdminSite()
+    model_admin: admin.RedisAdmin = admin.RedisAdmin(models.Default, site)
+    request: typing.Any = RequestFactory().get('/admin/redis_admin/default/')
+    request.user = User(
+        username='superuser', is_superuser=True, is_staff=True, is_active=True
+    )
+    obj: models.RedisValue = models.Default(key='some_key', type='string')
+
+    assert model_admin.has_view_permission(request) is True
+    assert model_admin.has_add_permission(request) is False
+    assert model_admin.has_change_permission(request) is False
+    assert model_admin.has_change_permission(request, obj) is False
+    assert model_admin.has_delete_permission(request) is False
+    assert model_admin.has_delete_permission(request, obj) is False
+    assert 'delete_selected' not in model_admin.get_actions(request)
+
+
+@pytest.mark.django_db
+def test_admin_write_endpoints_return_403(
+    redis_client: redis.Redis[bytes], admin_client: Client
+) -> None:
+    redis_client.set('endpoint_key', 'endpoint_value')
+    http: Client = admin_client
+
+    base: str = '/admin/redis_admin/default/'
+    object_url: str = f'{base}{quote("endpoint_key")}/'
+
+    assert http.get(f'{base}add/').status_code == 403
+    assert http.post(f'{base}add/', {'key': 'new'}).status_code == 403
+    assert http.post(f'{object_url}change/', {'key': 'x'}).status_code == 403
+    assert http.get(f'{object_url}delete/').status_code == 403
+    assert (
+        http.post(f'{object_url}delete/', {'post': 'yes'}).status_code == 403
+    )
+
+    bulk: typing.Any = http.post(
+        base,
+        {
+            'action': 'delete_selected',
+            '_selected_action': ['endpoint_key'],
+            'post': 'yes',
+        },
+    )
+    assert bulk.status_code in (200, 302)
+    assert redis_client.exists('endpoint_key') == 1
+
+
+@pytest.mark.django_db
+def test_admin_pages_render_read_only(
+    redis_client: redis.Redis[bytes], admin_client: Client
+) -> None:
+    redis_client.set('render_key', 'render_value')
+    http: Client = admin_client
+
+    changelist: typing.Any = http.get('/admin/redis_admin/default/')
+    assert changelist.status_code == 200
+    html: str = changelist.content.decode()
+    assert 'render_key' in html
+    # The sidebar still links to other apps' add pages, so check our URL.
+    assert '/admin/redis_admin/default/add/' not in html
+    assert 'name="action"' not in html
+
+    change_page: typing.Any = http.get(
+        f'/admin/redis_admin/default/{quote("render_key")}/change/'
+    )
+    assert change_page.status_code == 200
+    change_html: str = change_page.content.decode()
+    assert 'render_value' in change_html
+    assert 'name="_save"' not in change_html
+    assert 'deletelink' not in change_html

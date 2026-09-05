@@ -401,6 +401,25 @@ class RedisAdmin(_ModelAdminBase):
     def get_queryset(self, request: HttpRequest) -> typing.Any:
         return Queryset(self.model, self.list_per_page + 1)
 
+    # Writes are refused at the endpoint, not merely hidden in the templates.
+    # Django drops the add button, the save buttons and the bulk delete
+    # action when these return False, and the views raise PermissionDenied.
+    @override
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    @override
+    def has_change_permission(
+        self, request: HttpRequest, obj: models.RedisValue | None = None
+    ) -> bool:
+        return False
+
+    @override
+    def has_delete_permission(
+        self, request: HttpRequest, obj: models.RedisValue | None = None
+    ) -> bool:
+        return False
+
 
 for server_model in models.server_models.values():
     admin.site.register(server_model, RedisAdmin)
