@@ -8,7 +8,8 @@ Usage:
 The script migrates the SQLite database, creates the `admin`/`admin`
 superuser, seeds every configured Redis server with sample keys and starts
 the development server. It needs a running Redis, by default on
-`127.0.0.1:6379`, and it never deletes keys that are already there.
+`127.0.0.1:6379`. Re-running it overwrites the sample keys and leaves every
+other key alone.
 """
 
 from __future__ import annotations
@@ -42,6 +43,8 @@ def seed_default(client: redis.Redis[bytes]) -> list[str]:
     pipe.set('greeting', 'Hello from django-redis-admin')
     pipe.set('counter:page_views', 4242)
     pipe.set('session:spam', 'eggs', ex=3600)
+    # RPUSH appends, so reset the list or every run would grow the menu.
+    pipe.delete('menu:breakfast')
     pipe.rpush('menu:breakfast', 'spam', 'eggs', 'spam', 'bacon', 'spam')
     pipe.sadd('tags', 'python', 'django', 'redis')
     pipe.hset(
@@ -112,7 +115,10 @@ def ensure_superuser(
     user: User = user_model.objects.get_or_create(username=username)[0]
     user.is_staff = True
     user.is_superuser = True
-    user.set_password(password)
+    # Resetting an unchanged password would still rotate the session hash
+    # and log every browser out on each re-seed.
+    if not user.check_password(password):
+        user.set_password(password)
     user.save()
     return user
 

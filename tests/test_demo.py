@@ -37,6 +37,15 @@ def test_seed_default_writes_every_type(
     assert len(demo.LONG_VALUE) > 150
 
 
+def test_seed_default_is_repeatable(redis_client: redis.Redis[bytes]) -> None:
+    demo.seed_default(redis_client)
+    demo.seed_default(redis_client)
+
+    assert redis_client.llen('menu:breakfast') == 5
+    assert redis_client.scard('tags') == 3
+    assert redis_client.zcard('leaderboard') == 3
+
+
 def test_seed_sessions_sets_a_ttl(redis_client: redis.Redis[bytes]) -> None:
     keys: list[str] = demo.seed_sessions(redis_client)
     assert len(keys) == 3
@@ -79,6 +88,14 @@ def test_ensure_superuser_is_idempotent() -> None:
     assert second.is_staff is True
     assert second.is_superuser is True
     assert second.check_password(demo.DEMO_PASSWORD)
+    # The hash is left alone when the password already matches, so open
+    # sessions survive a re-seed.
+    assert first.password == second.password
+
+    second.set_password('changed')
+    second.save()
+    third: typing.Any = demo.ensure_superuser()
+    assert third.check_password(demo.DEMO_PASSWORD)
 
 
 @pytest.mark.django_db

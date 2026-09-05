@@ -6,6 +6,8 @@ build-backend = 'uv_build'
 module-root = ''
 module-name = 'redis_admin'
 source-include = ['tests/**/*.py', 'test_redis_admin/**/*.py', 'tox.ini']
+# The demo generates a SQLite database next to its settings.
+source-exclude = ['**/*.sqlite3', '**/__pycache__']
 
 [project]
 name = 'django-redis-admin'
