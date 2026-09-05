@@ -91,7 +91,7 @@ check-hidden = true
 python_version = '3.10'
 strict = true
 check_untyped_defs = true
-files = ['redis_admin', 'tests']
+files = ['redis_admin', 'test_redis_admin', 'tests']
 plugins = ['mypy_django_plugin.main']
 
 [[tool.mypy.overrides]]
@@ -104,12 +104,12 @@ django_settings_module = 'test_redis_admin.settings'
 [tool.pyright]
 typeCheckingMode = 'strict'
 pythonVersion = '3.10'
-include = ['redis_admin', 'tests']
+include = ['redis_admin', 'test_redis_admin', 'tests']
 exclude = ['**/__pycache__', '.tox', '.venv', 'build', 'dist', 'docs']
 reportMissingTypeStubs = false
 
 [tool.pyrefly]
-project-includes = ['redis_admin', 'tests']
+project-includes = ['redis_admin', 'test_redis_admin', 'tests']
 project-excludes = ['**/__pycache__', '.tox', '.venv']
 python-version = '3.10'
 # The default preset skips override validation. Strict is the explicit gate.
