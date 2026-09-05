@@ -11,6 +11,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.test import RequestFactory
+from typing_extensions import override
 
 from redis_admin import admin, models
 
@@ -276,6 +277,7 @@ def test_queryset_fetch_values_exception_logging(
             app_label = 'redis_admin'
 
         @property
+        @override
         def value(self) -> typing.Any:
             raise ValueError('decoding explosion')
 

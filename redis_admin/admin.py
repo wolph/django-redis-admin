@@ -14,6 +14,7 @@ from django.contrib import admin
 from django.db.models import Q
 from django.http import HttpRequest
 from django.utils import timezone
+from typing_extensions import override
 
 from . import client, models, settings
 
@@ -396,6 +397,7 @@ class RedisAdmin(_ModelAdminBase):
         f.name for f in models.RedisValue._meta.get_fields()
     )
 
+    @override
     def get_queryset(self, request: HttpRequest) -> typing.Any:
         return Queryset(self.model, self.list_per_page + 1)
 

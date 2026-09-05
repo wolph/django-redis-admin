@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import redis
 from django.db import models
 from django.utils import timezone
+from typing_extensions import override
 
 from . import settings
 
@@ -172,20 +173,24 @@ class RedisValue(models.Model):
 
 @RedisValue.register_type('string')
 class RedisString(RedisValue):
+    @override
     def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.get(self.key)
 
     @property
+    @override
     def value(self) -> typing.Any:
         return self.decode_string(self.raw_value)
 
 
 @RedisValue.register_type('list')
 class RedisList(RedisValue):
+    @override
     def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.lrange(self.key, 0, -1)
 
     @property
+    @override
     def value(self) -> list[typing.Any]:
         raw_value: typing.Any = self.raw_value
         if raw_value:
@@ -195,10 +200,12 @@ class RedisList(RedisValue):
 
 @RedisValue.register_type('set')
 class RedisSet(RedisValue):
+    @override
     def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.smembers(self.key)
 
     @property
+    @override
     def value(self) -> set[typing.Any]:
         raw_value: typing.Any = self.raw_value
         if raw_value:
@@ -208,10 +215,12 @@ class RedisSet(RedisValue):
 
 @RedisValue.register_type('hash')
 class RedisHash(RedisValue):
+    @override
     def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.hgetall(self.key)
 
     @property
+    @override
     def value(self) -> typing.Mapping[typing.Any, typing.Any]:
         raw_value: typing.Any = self.raw_value
         if raw_value:
@@ -224,10 +233,12 @@ class RedisHash(RedisValue):
 
 @RedisValue.register_type('zset')
 class RedisZSet(RedisHash):
+    @override
     def fetch_value(self, client: redis.Redis[bytes]) -> typing.Any:
         return client.zrangebyscore(self.key, '-inf', '+inf', withscores=True)
 
     @property
+    @override
     def value(self) -> collections.OrderedDict[typing.Any, typing.Any]:
         raw_value: typing.Any = self.raw_value
         if raw_value:

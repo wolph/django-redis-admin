@@ -40,6 +40,7 @@ classifiers = [
 dependencies = [
     'redis>=4.0.0',
     'django>=4.2',
+    'typing-extensions>=4.4',
 ]
 
 [project.urls]
@@ -111,6 +112,8 @@ reportMissingTypeStubs = false
 project-includes = ['redis_admin', 'tests']
 project-excludes = ['**/__pycache__', '.tox', '.venv']
 python-version = '3.10'
+# The default preset skips override validation. Strict is the explicit gate.
+preset = 'strict'
 
 [tool.pytest.ini_options]
 testpaths = ['tests']
