@@ -38,12 +38,45 @@ jobs:
       - run: uvx --with tox-uv --with tox-gh-actions tox
         env:
           COVERAGE_FILE: .coverage.${{ matrix.python-version }}
+      # PyPy runs without coverage (see tox.ini), so it has nothing to upload.
       - uses: actions/upload-artifact@v7
+        if: ${{ !startsWith(matrix.python-version, 'pypy') }}
         with:
           name: coverage-${{ matrix.python-version }}
           path: .coverage.*
           include-hidden-files: true
           if-no-files-found: error
+
+  # Pinned Django series: the oldest supported release and the current ones.
+  django-compat:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: '3.12'
+            env: py312-django42
+          - python-version: '3.13'
+            env: py313-django52
+          - python-version: '3.14'
+            env: py314-django60
+          - python-version: '3.14'
+            env: py314-django61
+    steps:
+      - uses: actions/checkout@v7
+      - name: Ensure redis-server is installed
+        run: |
+          if ! command -v redis-server >/dev/null 2>&1
+          then
+            sudo apt-get update
+            sudo apt-get install -y redis-server
+          fi
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-suffix: compat-${{ matrix.env }}
+      - run: uvx --with tox-uv tox -e ${{ matrix.env }}
 
   lint:
     runs-on: ubuntu-latest
