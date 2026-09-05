@@ -5,7 +5,7 @@ build-backend = 'uv_build'
 [tool.uv.build-backend]
 module-root = ''
 module-name = 'redis_admin'
-source-include = ['tests/**/*.py', 'tox.ini']
+source-include = ['tests/**/*.py', 'test_redis_admin/**/*.py', 'tox.ini']
 
 [project]
 name = 'django-redis-admin'
@@ -115,6 +115,9 @@ python-version = '3.10'
 [tool.pytest.ini_options]
 testpaths = ['tests']
 python_files = ['test_*.py']
+# Keep the repository root importable so `test_redis_admin.settings` resolves
+# without an editable install.
+pythonpath = ['.']
 addopts = [
     '--strict-config',
     '--strict-markers',

@@ -24,3 +24,4 @@ uv.lock
 gpgit/
 .zshhistory
 !docs/superpowers/
+*.sqlite3
