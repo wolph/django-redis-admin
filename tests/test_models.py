@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import collections
 import importlib
+import importlib.metadata
 import re
 import typing
 from datetime import timedelta
@@ -26,7 +27,11 @@ def test_about() -> None:
     assert 'Rick van Hattem' in __about__.__author__
     assert 'Django Admin interface' in __about__.__description__
     assert __about__.__email__ == 'wolph@wol.ph'
-    assert __about__.__version__ == '0.3.0'
+    # The version is declared in pyproject.toml and mirrored here, so the
+    # two must never drift apart.
+    assert __about__.__version__ == importlib.metadata.version(
+        'django-redis-admin'
+    )
     assert __about__.__license__ == 'BSD'
     assert 'Rick van Hattem' in __about__.__copyright__
     assert 'github.com' in __about__.__url__
