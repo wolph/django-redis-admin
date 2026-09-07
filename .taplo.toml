@@ -1,0 +1,14 @@
+include = ["pyproject.toml", "ruff.toml", ".taplo.toml"]
+
+[formatting]
+# Match the hand-written style: one entry per line, no key reordering and
+# no alignment columns that churn every time a key changes length.
+align_entries = false
+align_comments = false
+array_auto_collapse = false
+array_auto_expand = true
+array_trailing_comma = true
+column_width = 79
+indent_string = "    "
+reorder_keys = false
+reorder_arrays = false

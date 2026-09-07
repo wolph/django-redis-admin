@@ -87,6 +87,16 @@ tox = ['tox>=4', 'tox-uv>=1', 'tox-gh-actions']
 [tool.uv]
 exclude-newer = "14 days"
 
+[tool.rumdl]
+# Planning documents under docs/superpowers are working notes, not prose
+# for readers, and docs/_build is generated.
+exclude = ['docs/superpowers', 'docs/_build', '.tox', '.venv']
+# MD033: the README centres its header with HTML, which GitHub and PyPI
+# both render. MD041: the same header starts with a <div>, not a heading.
+# MD040: MyST directive fences such as ```{note} carry a directive name
+# where rumdl expects a language.
+disable = ['MD033', 'MD040', 'MD041']
+
 [tool.codespell]
 skip = '*.lock,*.svg,*.egg-info,./.git,./.tox,./.venv,./.ruff_cache,./.mypy_cache,./.pytest_cache,./build,./dist,./htmlcov,./docs/_build,*/__pycache__'
 check-hidden = true
@@ -95,7 +105,13 @@ check-hidden = true
 python_version = '3.10'
 strict = true
 check_untyped_defs = true
-files = ['redis_admin', 'test_redis_admin', 'tests']
+files = [
+    'redis_admin',
+    'test_redis_admin',
+    'tests',
+    'docs/conf.py',
+    'scripts',
+]
 plugins = ['mypy_django_plugin.main']
 
 [[tool.mypy.overrides]]
@@ -108,13 +124,25 @@ django_settings_module = 'test_redis_admin.settings'
 [tool.pyright]
 typeCheckingMode = 'strict'
 pythonVersion = '3.10'
-include = ['redis_admin', 'test_redis_admin', 'tests']
-exclude = ['**/__pycache__', '.tox', '.venv', 'build', 'dist', 'docs']
+include = [
+    'redis_admin',
+    'test_redis_admin',
+    'tests',
+    'docs/conf.py',
+    'scripts',
+]
+exclude = ['**/__pycache__', '.tox', '.venv', 'build', 'dist', 'docs/_build']
 reportMissingTypeStubs = false
 
 [tool.pyrefly]
-project-includes = ['redis_admin', 'test_redis_admin', 'tests']
-project-excludes = ['**/__pycache__', '.tox', '.venv']
+project-includes = [
+    'redis_admin',
+    'test_redis_admin',
+    'tests',
+    'docs/conf.py',
+    'scripts',
+]
+project-excludes = ['**/__pycache__', '.tox', '.venv', 'docs/_build']
 python-version = '3.10'
 # The default preset skips override validation. Strict is the explicit gate.
 preset = 'strict'
@@ -151,4 +179,3 @@ exclude_also = [
     'if __name__ == .__main__.:',
     'raise NotImplementedError',
 ]
-

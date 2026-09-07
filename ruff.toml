@@ -74,6 +74,7 @@ select = [
 '*tests/*' = ['INP001', 'T201', 'T203', 'ASYNC109', 'B007']
 'test_redis_admin/*' = ['INP001', 'T201']
 'docs/*' = ['INP001', 'E501']
+'scripts/*' = ['INP001']
 
 [lint.pydocstyle]
 convention = 'google'
