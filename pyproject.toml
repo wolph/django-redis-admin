@@ -11,7 +11,7 @@ source-exclude = ['**/*.sqlite3', '**/__pycache__']
 
 [project]
 name = 'django-redis-admin'
-version = "0.3.0"
+version = "0.4.0"
 description = 'A Django Admin interface for Redis servers with optional Redis Sentinel support'
 readme = 'README.md'
 requires-python = '>=3.10'
