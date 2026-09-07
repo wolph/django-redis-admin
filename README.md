@@ -152,7 +152,7 @@ uv sync
 uv run python -m test_redis_admin.demo
 ```
 
-Log in at http://127.0.0.1:8080/admin/ with `admin` / `admin`. The demo needs
+Log in at <http://127.0.0.1:8080/admin/> with `admin` / `admin`. The demo needs
 a Redis on `127.0.0.1:6379`, or set `REDIS_HOST` and `REDIS_PORT` to point it
 somewhere else. Every screenshot on this page comes from that demo.
 
@@ -165,10 +165,14 @@ uv run pytest          # tests with the 100% coverage gate
 uvx --with tox-uv tox -p auto   # the full matrix CI runs
 ```
 
-`tox -m check` runs ruff, mypy, basedpyright, pyrefly and codespell. `tox -m
-compat` runs the pinned Django 4.2, 5.2, 6.0 and 6.1 environments. PyPy runs
-the suite without coverage because coverage instrumentation breaks Django's
-admin autodiscover there, and the CPython cells own the coverage gate.
+`tox -m check` runs ruff, the three type checkers, codespell, and the
+linters for TOML, YAML, Markdown and the GitHub workflows. `tox -m compat`
+runs the pinned Django 4.2, 5.2, 6.0 and 6.1 environments and `tox -m
+package` builds both distributions and runs the tests from the sdist. CI
+runs every one of these as its own job, and a pushed `vX.Y.Z` tag creates
+the GitHub release and publishes to PyPI. The
+[development guide](https://django-redis-admin.readthedocs.io/en/latest/development.html)
+has the details.
 
 ## Roadmap
 
