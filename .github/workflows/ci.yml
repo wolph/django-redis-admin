@@ -10,19 +10,26 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
+  # tox.ini is the single source of truth: every job below runs one tox
+  # environment, so `tox -p auto` locally is the same suite as this file.
+  # tox-gh-actions maps the runner's Python to its py3xx / pypy3xx env and
+  # COVERAGE_FILE gives each cell a unique data file for the combine job.
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         python-version:
           ['3.10', '3.11', '3.12', '3.13', '3.14', 'pypy3.10', 'pypy3.11']
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Ensure redis-server is installed
         run: |
           if ! command -v redis-server >/dev/null 2>&1
@@ -30,7 +37,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y redis-server
           fi
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
@@ -39,7 +46,7 @@ jobs:
         env:
           COVERAGE_FILE: .coverage.${{ matrix.python-version }}
       # PyPy runs without coverage (see tox.ini), so it has nothing to upload.
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ !startsWith(matrix.python-version, 'pypy') }}
         with:
           name: coverage-${{ matrix.python-version }}
@@ -50,6 +57,8 @@ jobs:
   # Pinned Django series: the oldest supported release and the current ones.
   django-compat:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -63,7 +72,9 @@ jobs:
           - python-version: '3.14'
             env: py314-django61
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Ensure redis-server is installed
         run: |
           if ! command -v redis-server >/dev/null 2>&1
@@ -71,62 +82,84 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y redis-server
           fi
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-suffix: compat-${{ matrix.env }}
       - run: uvx --with tox-uv tox -e ${{ matrix.env }}
 
-  lint:
+  # The tests inside the built sdist, so a packaging gap fails here rather
+  # than on a user's machine.
+  sdist:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          cache-suffix: lint
-      - run: uvx --with tox-uv tox -e lint
+          persist-credentials: false
+      - name: Ensure redis-server is installed
+        run: |
+          if ! command -v redis-server >/dev/null 2>&1
+          then
+            sudo apt-get update
+            sudo apt-get install -y redis-server
+          fi
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          cache-suffix: sdist
+      - run: uvx --with tox-uv tox -e sdist
 
-  type-check:
+  # Linters, type checkers, spelling, packaging metadata, docs and the
+  # dependency audit. Each is one tox env; see `tox -m check`.
+  check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        checker: [mypy, pyright, pyrefly]
+        env:
+          - lint
+          - mypy
+          - pyright
+          - pyrefly
+          - codespell
+          - taplo
+          - yamllint
+          - rumdl
+          - actionlint
+          - zizmor
+          - audit
+          - build
+          - docs
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          cache-suffix: type-check-${{ matrix.checker }}
-      - run: uvx --with tox-uv tox -e ${{ matrix.checker }}
-
-  codespell:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v8.2.0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
-          cache-suffix: codespell
-      - run: uvx --with tox-uv tox -e codespell
+          enable-cache: true
+          cache-suffix: check-${{ matrix.env }}
+      - run: uvx --with tox-uv tox -e ${{ matrix.env }}
 
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          cache-suffix: docs
-      - run: uvx --with tox-uv tox -e docs
-
+  # The real coverage gate: combine every CPython cell's data, enforce 100%.
   coverage:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
           cache-suffix: coverage
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: coverage-*
           merge-multiple: true
