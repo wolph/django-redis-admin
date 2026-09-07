@@ -1,0 +1,15 @@
+version: 2
+
+# Actions are pinned to commit SHAs in the workflows. Dependabot moves the
+# pins and their version comments in one grouped pull request per week.
+# Python dependencies are declared as ranges without a tracked lockfile,
+# so there is nothing for Dependabot to bump there. pip-audit in CI covers
+# known vulnerabilities in the resolved environment instead.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']

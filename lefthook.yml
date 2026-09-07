@@ -1,0 +1,37 @@
+# Git hooks managed by lefthook. Install with `uv run lefthook install`.
+# pre-commit: instant, staged files only. pre-push: a few seconds, runs less
+# often. The full matrix and the 100% coverage gate are tox's and CI's job.
+
+pre-commit:
+  parallel: false
+  commands:
+    ruff:
+      glob: '*.py'
+      run: uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
+      stage_fixed: true
+    taplo:
+      glob: '*.toml'
+      run: uvx taplo fmt {staged_files}
+      stage_fixed: true
+    yamllint:
+      glob: '*.{yml,yaml}'
+      run: uvx yamllint --strict {staged_files}
+    rumdl:
+      glob: '*.md'
+      run: uvx rumdl check {staged_files}
+    codespell:
+      run: uv run codespell {staged_files}
+
+pre-push:
+  parallel: true
+  commands:
+    ruff:
+      run: uv run ruff check .
+    mypy:
+      run: uv run mypy
+    actionlint:
+      run: uvx actionlint-py
+    zizmor:
+      run: uvx zizmor --min-severity low .github/workflows
+    test:
+      run: uv run pytest -q -x --no-cov

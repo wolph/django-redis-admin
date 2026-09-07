@@ -1,38 +1,39 @@
-redis\_admin package
-====================
+# Redis Admin Package
 
-Submodules
-----------
+## Submodules
 
-redis\_admin.settings module
-----------------------------
+### `redis_admin.settings`
 
+```{eval-rst}
 .. automodule:: redis_admin.settings
     :members:
     :undoc-members:
     :show-inheritance:
+```
 
-redis\_admin.client module
---------------------------
+### `redis_admin.client`
 
+```{eval-rst}
 .. automodule:: redis_admin.client
     :members:
     :undoc-members:
     :show-inheritance:
+```
 
-redis\_admin.models module
---------------------------
+### `redis_admin.models`
 
+```{eval-rst}
 .. automodule:: redis_admin.models
     :members:
     :undoc-members:
     :show-inheritance:
+```
 
-redis\_admin.admin module
--------------------------
+### `redis_admin.admin`
 
+```{eval-rst}
 .. automodule:: redis_admin.admin
     :members:
     :undoc-members:
     :show-inheritance:
-
+```

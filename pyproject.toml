@@ -1,0 +1,181 @@
+[build-system]
+requires = ['uv_build>=0.11,<0.13']
+build-backend = 'uv_build'
+
+[tool.uv.build-backend]
+module-root = ''
+module-name = 'redis_admin'
+source-include = ['tests/**/*.py', 'test_redis_admin/**/*.py', 'tox.ini']
+# The demo generates a SQLite database next to its settings.
+source-exclude = ['**/*.sqlite3', '**/__pycache__']
+
+[project]
+name = 'django-redis-admin'
+version = "0.4.0"
+description = 'A Django Admin interface for Redis servers with optional Redis Sentinel support'
+readme = 'README.md'
+requires-python = '>=3.10'
+license = 'BSD-3-Clause'
+license-files = ['LICENSE']
+authors = [{ name = 'Rick van Hattem', email = 'wolph@wol.ph' }]
+keywords = ['redis', 'django', 'admin', 'sentinel']
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Environment :: Web Environment',
+    'Framework :: Django',
+    'Framework :: Django :: 4.2',
+    'Framework :: Django :: 5.0',
+    'Framework :: Django :: 5.1',
+    'Framework :: Django :: 5.2',
+    'Framework :: Django :: 6.0',
+    'Framework :: Django :: 6.1',
+    'Intended Audience :: Developers',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+    'Programming Language :: Python :: Implementation :: CPython',
+    'Programming Language :: Python :: Implementation :: PyPy',
+    'Typing :: Typed',
+]
+dependencies = [
+    'redis>=4.0.0',
+    'django>=4.2',
+    'typing-extensions>=4.4',
+]
+
+[project.urls]
+Homepage = 'https://github.com/WoLpH/django-redis-admin'
+Documentation = 'https://django-redis-admin.readthedocs.io/'
+Repository = 'https://github.com/WoLpH/django-redis-admin'
+Changelog = 'https://github.com/WoLpH/django-redis-admin/releases'
+
+[project.optional-dependencies]
+docs = ['sphinx', 'furo', 'myst-parser']
+tests = [
+    'pytest',
+    'pytest-cov',
+    'pytest-django',
+    'fakeredis',
+]
+
+[dependency-groups]
+docs = ['sphinx', 'furo', 'myst-parser']
+test = [
+    'pytest',
+    'pytest-cov',
+    'pytest-django',
+    'fakeredis',
+]
+dev = [
+    'ruff',
+    'mypy',
+    'basedpyright',
+    'pyrefly',
+    'codespell',
+    'django-stubs',
+    'types-redis',
+    'lefthook',
+    { include-group = 'test' },
+    { include-group = 'docs' },
+]
+tox = ['tox>=4', 'tox-uv>=1', 'tox-gh-actions']
+
+[tool.uv]
+exclude-newer = "14 days"
+
+[tool.rumdl]
+# Planning documents under docs/superpowers are working notes, not prose
+# for readers, and docs/_build is generated.
+exclude = ['docs/superpowers', 'docs/_build', '.tox', '.venv']
+# MD033: the README centres its header with HTML, which GitHub and PyPI
+# both render. MD041: the same header starts with a <div>, not a heading.
+# MD040: MyST directive fences such as ```{note} carry a directive name
+# where rumdl expects a language.
+disable = ['MD033', 'MD040', 'MD041']
+
+[tool.codespell]
+skip = '*.lock,*.svg,*.egg-info,./.git,./.tox,./.venv,./.ruff_cache,./.mypy_cache,./.pytest_cache,./build,./dist,./htmlcov,./docs/_build,*/__pycache__'
+check-hidden = true
+
+[tool.mypy]
+python_version = '3.10'
+strict = true
+check_untyped_defs = true
+files = [
+    'redis_admin',
+    'test_redis_admin',
+    'tests',
+    'docs/conf.py',
+    'scripts',
+]
+plugins = ['mypy_django_plugin.main']
+
+[[tool.mypy.overrides]]
+module = 'tests.*'
+disallow_untyped_defs = false
+
+[tool.django-stubs]
+django_settings_module = 'test_redis_admin.settings'
+
+[tool.pyright]
+typeCheckingMode = 'strict'
+pythonVersion = '3.10'
+include = [
+    'redis_admin',
+    'test_redis_admin',
+    'tests',
+    'docs/conf.py',
+    'scripts',
+]
+exclude = ['**/__pycache__', '.tox', '.venv', 'build', 'dist', 'docs/_build']
+reportMissingTypeStubs = false
+
+[tool.pyrefly]
+project-includes = [
+    'redis_admin',
+    'test_redis_admin',
+    'tests',
+    'docs/conf.py',
+    'scripts',
+]
+project-excludes = ['**/__pycache__', '.tox', '.venv', 'docs/_build']
+python-version = '3.10'
+# The default preset skips override validation. Strict is the explicit gate.
+preset = 'strict'
+
+[tool.pytest.ini_options]
+testpaths = ['tests']
+python_files = ['test_*.py']
+# Keep the repository root importable so `test_redis_admin.settings` resolves
+# without an editable install.
+pythonpath = ['.']
+addopts = [
+    '--strict-config',
+    '--strict-markers',
+    '-ra',
+    '--cov=redis_admin',
+    '--cov-report=term-missing',
+]
+DJANGO_SETTINGS_MODULE = 'test_redis_admin.settings'
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = ['redis_admin']
+
+[tool.coverage.paths]
+source = ['redis_admin', '*/redis_admin']
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+exclude_also = [
+    'pragma: no cover',
+    'if typing.TYPE_CHECKING:',
+    'if __name__ == .__main__.:',
+    'raise NotImplementedError',
+]
