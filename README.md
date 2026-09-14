@@ -4,15 +4,15 @@
 
 **Browse every key on your Redis servers from the Django admin you already have.**
 
-[![PyPI version](https://img.shields.io/pypi/v/django-redis-admin.svg?logo=pypi&logoColor=white)](https://pypi.org/project/django-redis-admin/)
-[![Python versions](https://img.shields.io/pypi/pyversions/django-redis-admin.svg?logo=python&logoColor=white)](https://pypi.org/project/django-redis-admin/)
-[![Django versions](https://img.shields.io/pypi/djversions/django-redis-admin.svg?logo=django&logoColor=white)](https://pypi.org/project/django-redis-admin/)
+[![PyPI version](https://img.shields.io/pypi/v/django-redis-admin.svg?logo=pypi&logoColor=white&style=plastic)](https://pypi.org/project/django-redis-admin/)
+[![Python versions](https://img.shields.io/pypi/pyversions/django-redis-admin.svg?logo=python&logoColor=white&style=plastic)](https://pypi.org/project/django-redis-admin/)
+[![Django versions](https://img.shields.io/pypi/djversions/django-redis-admin.svg?logo=django&logoColor=white&style=plastic)](https://pypi.org/project/django-redis-admin/)
 [![CI on master](https://github.com/wolph/django-redis-admin/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/wolph/django-redis-admin/actions/workflows/ci.yml?query=branch%3Amaster)
 [![Coverage on master](https://coveralls.io/repos/github/wolph/django-redis-admin/badge.svg?branch=master)](https://coveralls.io/github/wolph/django-redis-admin?branch=master)
-[![Documentation](https://img.shields.io/readthedocs/django-redis-admin.svg?logo=readthedocs&logoColor=white)](https://django-redis-admin.readthedocs.io/)
-[![Typed](https://img.shields.io/badge/typed-mypy%20%7C%20pyright%20%7C%20pyrefly-blue.svg)](https://github.com/wolph/django-redis-admin)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![License](https://img.shields.io/pypi/l/django-redis-admin.svg)](https://github.com/wolph/django-redis-admin/blob/develop/LICENSE)
+[![Documentation](https://img.shields.io/readthedocs/django-redis-admin.svg?logo=readthedocs&logoColor=white&style=plastic)](https://django-redis-admin.readthedocs.io/)
+[Typed: mypy, pyright and pyrefly](https://github.com/wolph/django-redis-admin)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=plastic)](https://github.com/astral-sh/ruff)
+[![License](https://img.shields.io/pypi/l/django-redis-admin.svg?style=plastic)](https://github.com/wolph/django-redis-admin/blob/develop/LICENSE)
 
 [**Documentation**](https://django-redis-admin.readthedocs.io/) ·
 [**PyPI**](https://pypi.org/project/django-redis-admin/) ·
