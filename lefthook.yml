@@ -30,7 +30,7 @@ pre-push:
     mypy:
       run: uv run mypy
     actionlint:
-      run: uvx actionlint-py
+      run: uvx --from actionlint-py actionlint
     zizmor:
       run: uvx zizmor --min-severity low .github/workflows
     test:
