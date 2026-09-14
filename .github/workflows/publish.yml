@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
       # No dependency cache: release artifacts must not be built from
       # cacheable state that a pull request could have poisoned.
-      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: false
       - name: Verify the tag matches the project version
