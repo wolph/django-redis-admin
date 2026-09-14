@@ -8,7 +8,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/django-redis-admin.svg?logo=python&logoColor=white)](https://pypi.org/project/django-redis-admin/)
 [![Django versions](https://img.shields.io/pypi/djversions/django-redis-admin.svg?logo=django&logoColor=white)](https://pypi.org/project/django-redis-admin/)
 [![CI on master](https://github.com/wolph/django-redis-admin/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/wolph/django-redis-admin/actions/workflows/ci.yml?query=branch%3Amaster)
-[![Coverage on master](https://coveralls.io/repos/github/WoLpH/django-redis-admin/badge.svg?branch=master)](https://coveralls.io/github/WoLpH/django-redis-admin?branch=master)
+[![Coverage on master](https://coveralls.io/repos/github/wolph/django-redis-admin/badge.svg?branch=master)](https://coveralls.io/github/wolph/django-redis-admin?branch=master)
 [![Documentation](https://img.shields.io/readthedocs/django-redis-admin.svg?logo=readthedocs&logoColor=white)](https://django-redis-admin.readthedocs.io/)
 [![Typed](https://img.shields.io/badge/typed-mypy%20%7C%20pyright%20%7C%20pyrefly-blue.svg)](https://github.com/wolph/django-redis-admin)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
