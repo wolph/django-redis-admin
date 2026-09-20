@@ -143,7 +143,13 @@ jobs:
         with:
           enable-cache: true
           cache-suffix: check-${{ matrix.env }}
+      - name: Apply Ruff fixes to pull requests
+        if: github.event_name == 'pull_request' && matrix.env == 'lint'
+        run: uvx --with tox-uv tox -e ruff-fix
       - run: uvx --with tox-uv tox -e ${{ matrix.env }}
+        env:
+          RUFF_OUTPUT_FORMAT: >-
+            ${{ github.event_name == 'pull_request' && 'github' || 'full' }}
 
   # The real coverage gate: combine every CPython cell's data, enforce 100%.
   coverage:
