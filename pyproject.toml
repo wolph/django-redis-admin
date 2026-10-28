@@ -86,6 +86,10 @@ tox = ['tox>=4', 'tox-uv>=1', 'tox-gh-actions']
 
 [tool.uv]
 exclude-newer = "14 days"
+# filelock 4.2.1+ fixes CVE-2026-112906 and five sibling CVEs, and certifi
+# 2026.10.19+ fixes PYSEC-2026-4320; both fail the audit env, so let the
+# fixes through the 14-day gate. Drop both after 2026-11-02.
+exclude-newer-package = { filelock = "2026-10-20T00:00:00Z", certifi = "2026-10-21T00:00:00Z" }
 
 [tool.rumdl]
 # Planning documents under docs/superpowers are working notes, not prose
