@@ -52,6 +52,8 @@ Homepage = 'https://github.com/WoLpH/django-redis-admin'
 Documentation = 'https://django-redis-admin.readthedocs.io/'
 Repository = 'https://github.com/WoLpH/django-redis-admin'
 Changelog = 'https://github.com/WoLpH/django-redis-admin/releases'
+Issues = 'https://github.com/wolph/django-redis-admin/issues'
+Funding = 'https://github.com/sponsors/wolph'
 
 [project.optional-dependencies]
 docs = ['sphinx', 'furo', 'myst-parser']
